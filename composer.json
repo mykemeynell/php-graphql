@@ -1,0 +1,9 @@
+{
+  "name": "mykemeynell/php-graphql",
+  "description": "Build GraphQL queries using PHP",
+  "autoload": {
+    "psr-4": {
+      "GraphQL\\": "src"
+    }
+  }
+}
