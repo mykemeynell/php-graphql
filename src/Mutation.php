@@ -2,7 +2,19 @@
 
 namespace GraphQL;
 
+use GraphQL\Concerns\BuildsQuery;
+
 class Mutation extends GraphBuilder
 {
-    const TYPE = 'mutation';
+    use BuildsQuery;
+
+    public function build(): string
+    {
+        $mutation = "mutation {\n";
+        foreach ($this->fields as $field) {
+            $mutation .= $this->buildField($field, 2);
+        }
+        $mutation .= "}\n";
+        return $mutation;
+    }
 }
