@@ -3,47 +3,74 @@
 namespace GraphQL\Concerns;
 
 use GraphQL\Field;
+use GraphQL\Fragment;
 use Illuminate\Support\Arr;
 
 trait BuildsQuery
 {
     protected function buildField(Field $field, int $indent): string
     {
-        $indentStr = str_repeat(' ', $indent);
-        $fieldStr = $indentStr;
+        $result = str_repeat(' ', $indent);
 
-        if ($field->alias) {
-            $fieldStr .= $field->alias . ': ';
+        if ($field->getAlias()) {
+            $result .= $field->getAlias() . ': ';
         }
 
-        $fieldStr .= $field->name;
+        $result .= $field->getName();
 
-        if (!empty($field->args)) {
+        if (!empty($field->getArguments())) {
             $args = [];
-            foreach ($field->args as $key => $value) {
-                $args[] = "$key: " . $this->formatValue($value);
+            foreach ($field->getArguments() as $name => $value) {
+                $args[] = "$name: " . $this->formatValue($value);
             }
-            $fieldStr .= '(' . implode(', ', $args) . ')';
+            $result .= '(' . implode(', ', $args) . ')';
         }
 
-        $subFields = Arr::undot(
-            Arr::dot($field->subFields)
-        );
+        if (!empty($field->getDirectives())) {
+            foreach ($field->getDirectives() as $directive) {
+                $result .= ' ' . $directive->build();
+            }
+        }
 
-        if (!blank($subFields)) {
-            $fieldStr .= " {\n";
+        $subFields = $field->getSubFields();
+
+        if (!empty($subFields)) {
+            $result .= " {\n";
             foreach ($subFields as $subField) {
-                if (is_string($subField)) {
-                    $fieldStr .= $indentStr . "  $subField\n";
-                } elseif ($subField instanceof Field) {
-                    $fieldStr .= $this->buildField($subField, $indent + 2);
+                if ($subField instanceof Field) {
+                    $result .= $this->buildField($subField, $indent + 2);
+                } elseif ($subField instanceof Fragment) {
+                    $result .= str_repeat(' ', $indent + 2) . '...' . $subField->getName() . "\n";
+                } else {
+                    $result .= str_repeat(' ', $indent + 2) . $subField . "\n";
                 }
             }
-            $fieldStr .= $indentStr . "}\n";
+            $result .= str_repeat(' ', $indent) . "}\n";
         } else {
-            $fieldStr .= "\n";
+            $result .= "\n";
         }
 
-        return $fieldStr;
+        return $result;
+    }
+
+    private function formatValue($value): string
+    {
+        if (is_string($value)) {
+            return '"' . addslashes($value) . '"';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_null($value)) {
+            return 'null';
+        }
+
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+
+        return $value;
     }
 }

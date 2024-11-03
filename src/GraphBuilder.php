@@ -10,16 +10,16 @@ abstract class GraphBuilder implements \Stringable
 {
     protected array $fields = [];
 
-    public function addField(string $name, array $args = [], array $subFields = []): self
+    public function addField(string $name, array $args = [], array $subFields = [], array $directives = []): self
     {
-        $field = new Field($name, $args, $subFields);
+        $field = new Field($name, $args, $subFields, $directives);
         $this->fields[] = $field;
         return $this;
     }
 
-    public function addAliasedField(string $alias, string $name, array $args = [], array $subFields = []): self
+    public function addAliasedField(string $alias, string $name, array $args = [], array $subFields = [], array $directives = []): self
     {
-        $field = new Field($name, $args, $subFields, $alias);
+        $field = new Field($name, $args, $subFields, $directives, $alias);
         $this->fields[] = $field;
         return $this;
     }
@@ -34,22 +34,5 @@ abstract class GraphBuilder implements \Stringable
     public function toString(): string
     {
         return $this->build();
-    }
-
-    protected function formatValue($value): string
-    {
-        if (is_string($value)) {
-            return '"' . addslashes($value) . '"';
-        }
-        if (is_bool($value)) {
-            return $value ? 'true' : 'false';
-        }
-        if (is_null($value)) {
-            return 'null';
-        }
-        if (is_array($value)) {
-            return json_encode($value);
-        }
-        return $value;
     }
 }
