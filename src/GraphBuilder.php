@@ -3,8 +3,9 @@
 namespace GraphQL;
 
 use Illuminate\Support\Str;
+use Stringable;
 
-abstract class GraphBuilder
+abstract class GraphBuilder implements Stringable
 {
     /**
      * Select statements.
@@ -86,16 +87,6 @@ abstract class GraphBuilder
     public function getArguments(): array
     {
         return $this->arguments;
-    }
-
-    /**
-     * Convert the query to string.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return $this->convert();
     }
 
     /**
@@ -296,5 +287,27 @@ abstract class GraphBuilder
         return strtolower(
             Str::afterLast(static::class, '\\')
         );
+    }
+
+
+
+    /**
+     * Convert the query to string.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return $this->toString();
+    }
+
+    /**
+     * Convert the query to a string.
+     *
+     * @return string
+     */
+    public function toString(): string
+    {
+        return $this->convert();
     }
 }
