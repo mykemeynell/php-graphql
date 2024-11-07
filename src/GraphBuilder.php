@@ -2,29 +2,54 @@
 
 namespace GraphQL;
 
+use Firebase\JWT\BeforeValidException;
+use GraphQL\Concerns\BuildsQuery;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Stringable;
 
 abstract class GraphBuilder implements \Stringable
 {
+    use BuildsQuery;
+
+    /**
+     * @var Field[]
+     */
     protected array $fields = [];
 
-    public function addField(string $name, array $args = [], array $subFields = [], array $directives = []): self
+    public function build(): string
     {
-        $field = new Field($name, $args, $subFields, $directives);
+        $output = [];
+
+        $output[] = static::TYPE . " {\n";
+
+        foreach ($this->fields as $field) {
+            $output[] = $this->buildField($field, 2);
+        }
+
+        $output[] = "}\n";
+
+        return implode("\n", Arr::flatten($output));
+    }
+
+    public function getFirstField(): ?Field
+    {
+        return first($this->fields);
+    }
+
+    public function addField(Field $field): static
+    {
         $this->fields[] = $field;
         return $this;
     }
 
-    public function addAliasedField(string $alias, string $name, array $args = [], array $subFields = [], array $directives = []): self
+    public function addFields(array $fields): static
     {
-        $field = new Field($name, $args, $subFields, $directives, $alias);
-        $this->fields[] = $field;
+        foreach ($fields as $field) {
+            $this->addField($field);
+        }
         return $this;
     }
-
-    abstract public function build(): string;
 
     public function __toString(): string
     {

@@ -2,59 +2,59 @@
 
 namespace GraphQL\Concerns;
 
+use Exception;
+use GraphQL\DataParsers\Parser;
 use GraphQL\Field;
 use GraphQL\Fragment;
+use GraphQL\DataParsers\ArrayObjectParser;
+use GraphQL\Literals\Literal;
 use Illuminate\Support\Arr;
 
 trait BuildsQuery
 {
-    protected function buildField(Field $field, int $indent): string
+    public function buildField(Field $field, int $indent): array
     {
-        $result = str_repeat(' ', $indent);
+        $output = [];
 
-        if ($field->getAlias()) {
-            $result .= $field->getAlias() . ': ';
+        $line = str_repeat("  ", $indent);
+
+        $line .= $field->getAlias() ?? $field->getName();
+
+        if($field->hasAlias()) {
+            $line .= ':' . $field->getName();
         }
 
-        $result .= $field->getName();
-
-        if (!empty($field->getArguments())) {
-            $args = [];
-            foreach ($field->getArguments() as $name => $value) {
-                $args[] = "$name: " . $this->formatValue($value);
-            }
-            $result .= '(' . implode(', ', $args) . ')';
+        if($field->hasArguments()) {
+            $line .= sprintf("(%s)", $this->parseArguments($field->getArguments()));
         }
 
-        if (!empty($field->getDirectives())) {
-            foreach ($field->getDirectives() as $directive) {
-                $result .= ' ' . $directive->build();
+        if($field->hasSubFields()) {
+            $output[] = $line . '{';
+            foreach ($field->getSubFields() as $subField) {
+                $output[] = $this->buildField($subField, $indent + 2);
             }
-        }
-
-        $subFields = $field->getSubFields();
-
-        if (!empty($subFields)) {
-            $result .= " {\n";
-            foreach ($subFields as $subField) {
-                if ($subField instanceof Field) {
-                    $result .= $this->buildField($subField, $indent + 2);
-                } elseif ($subField instanceof Fragment) {
-                    $result .= str_repeat(' ', $indent + 2) . '...' . $subField->getName() . "\n";
-                } else {
-                    $result .= str_repeat(' ', $indent + 2) . $subField . "\n";
-                }
-            }
-            $result .= str_repeat(' ', $indent) . "}\n";
+            $output[] = str_repeat("  ", $indent) . '}';
         } else {
-            $result .= "\n";
+            $output[] = $line;
         }
 
-        return $result;
+        return $output;
     }
 
-    private function formatValue($value): string
+    private function value($value): string
     {
+        if($value instanceof Literal) {
+            return $value;
+        }
+
+        if (is_array($value) || is_object($value)) {
+            $parser = app(ArrayObjectParser::class);
+            if(!$parser instanceof Parser) {
+                throw new Exception("Parsers must be an instance of '%s'.", Parser::class);
+            }
+            return $parser->parse($value);
+        }
+
         if (is_string($value)) {
             return '"' . addslashes($value) . '"';
         }
@@ -67,10 +67,17 @@ trait BuildsQuery
             return 'null';
         }
 
-        if (is_array($value)) {
-            return json_encode($value);
+        return $value;
+    }
+
+    private function parseArguments(array $arguments): string
+    {
+        $output = [];
+
+        foreach($arguments as $name => $value) {
+            $output[] = sprintf("%s: %s", $name, $this->value($value));
         }
 
-        return $value;
+        return implode(", ", $output);
     }
 }
